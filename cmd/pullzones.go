@@ -18,7 +18,7 @@ var pullzonesCmd = &cobra.Command{
 var cloneCmd = &cobra.Command{
 	Use:   "clone [source] [target] [hostname]",
 	Short: "Clone a pull zone by name",
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		apiKey := os.Getenv("BUNNY_API_KEY")
 		if apiKey == "" {
@@ -28,14 +28,49 @@ var cloneCmd = &cobra.Command{
 
 		source := args[0]
 		target := args[1]
-		host := args[2]
+		//host := args[2]
 
-		err := api.CloneZone(apiKey, source, target, host)
+		err := api.CloneZone(apiKey, source, target)
 		if err != nil {
 			fmt.Printf("Error: %v\n", err)
 			os.Exit(1)
 		}
 		fmt.Printf("Successfully cloned %s to %s\n", source, target)
+	},
+}
+
+var rulesCmd = &cobra.Command{
+	Use:   "rules [source]",
+	Short: "Print Edge Rules of source zone",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY env variable not set")
+			os.Exit(1)
+		}
+
+		source := args[0]
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var targetId int
+		for _, z := range zones {
+			if z.Name == source {
+				targetId = z.Id
+				break
+			}
+		}
+
+		rules, err := api.GetRules(apiKey, targetId)
+		if err != nil {
+			fmt.Printf("Error %v\n", err)
+			os.Exit(1)
+		}
+		if len(rules) == 0 {
+			fmt.Println("No edge rules found.")
+			os.Exit(1)
+		}
+		printRulesJSON(rules)
 	},
 }
 
@@ -66,6 +101,7 @@ var infoAll = &cobra.Command{
 func init() {
 	pullzonesCmd.AddCommand(cloneCmd)
 	pullzonesCmd.AddCommand(infoAll)
+	pullzonesCmd.AddCommand(rulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
 }
 
@@ -106,6 +142,20 @@ func printZonesJSON(zones []api.PullZoneFull) {
 		}
 
 		fmt.Printf("--- FULL DATA FOR: %s ---\n", z.Name)
+		fmt.Println(string(data))
+		fmt.Println(strings.Repeat("=", 40))
+	}
+}
+
+func printRulesJSON(rules []api.EdgeRuleFull) {
+	fmt.Printf("=== EDGE RULES ===\n")
+	for _, z := range rules {
+		data, err := json.MarshalIndent(z, "", "  ")
+		if err != nil {
+			fmt.Printf("Error encoding rules")
+			continue
+		}
+		fmt.Printf("-- RULE NAME '%s' --\n", z.Description)
 		fmt.Println(string(data))
 		fmt.Println(strings.Repeat("=", 40))
 	}

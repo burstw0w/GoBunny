@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"io"
+	"net/http"
 )
 
 func GetPullZonesBasic(apiKey string) ([]PullZoneBasic, error) {
@@ -33,9 +33,9 @@ func GetPullZonesBasic(apiKey string) ([]PullZoneBasic, error) {
 	return zones, err
 }
 
-func GetPullZonesFull(apiKey string) ([]PullZoneFull, error){
+func GetPullZonesFull(apiKey string) ([]PullZoneFull, error) {
 	req, err := http.NewRequest("GET", "https://api.bunny.net/pullzone", nil)
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -45,7 +45,7 @@ func GetPullZonesFull(apiKey string) ([]PullZoneFull, error){
 	client := &http.Client{}
 	resp, err := client.Do(req)
 
-	if err != nil{
+	if err != nil {
 		return nil, err
 	}
 
@@ -57,123 +57,152 @@ func GetPullZonesFull(apiKey string) ([]PullZoneFull, error){
 
 	var zones []PullZoneFull
 	err = json.NewDecoder(resp.Body).Decode(&zones)
-	return zones, err;
+	return zones, err
 }
 
-func CloneZone(apiKey string, sourceName string, newName string, hostname string) error {
-    zones, err := GetPullZonesFull(apiKey)
-    if err != nil {
-        return err
-    }
+func CloneZone(apiKey string, sourceName string, newName string) error {
+	zones, err := GetPullZonesFull(apiKey)
+	if err != nil {
+		return err
+	}
 
-    var source *PullZoneFull
-    for i, z := range zones {
-        if z.Name == sourceName {
-            source = &zones[i]
-            break
-        }
-    }
-    if source == nil {
-        return fmt.Errorf("zone '%s' not found", sourceName)
-    }
+	var source *PullZoneFull
+	for i, z := range zones {
+		if z.Name == sourceName {
+			source = &zones[i]
+			break
+		}
+	}
+	if source == nil {
+		return fmt.Errorf("zone '%s' not found", sourceName)
+	}
 
-    source.Name = newName
-    source.Id = 0
-	source.EdgeScriptId = 0        
-	source.MiddlewareScriptId = nil 
-	source.Hostnames = nil          
-    body, err := json.Marshal(source)
-    if err != nil {
-        return err
-    }
+	source.Name = newName
+	source.Id = 0
+	source.EdgeScriptId = 0
+	source.MiddlewareScriptId = nil
+	source.Hostnames = nil
+	body, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
 
-    req, err := http.NewRequest("POST", "https://api.bunny.net/pullzone", bytes.NewBuffer(body))
-    if err != nil {
-        return err
-    }
-    req.Header.Set("AccessKey", apiKey)
-    req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequest("POST", "https://api.bunny.net/pullzone", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
 
-    client := &http.Client{}
-    resp, err := client.Do(req)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != 201 {
+	if resp.StatusCode != 201 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-        return fmt.Errorf("failed to create zone, API returned %d", resp.StatusCode, string(bodyBytes))
-    }
+		return fmt.Errorf("failed to create zone, API returned %d", resp.StatusCode, string(bodyBytes))
+	}
 
-    var newZone PullZoneFull
-    err = json.NewDecoder(resp.Body).Decode(&newZone)
-    if err != nil {
-        return err
-    }
+	var newZone PullZoneFull
+	err = json.NewDecoder(resp.Body).Decode(&newZone)
+	if err != nil {
+		return err
+	}
 
-    fmt.Printf("Created zone '%s' with ID %d\n", newZone.Name, newZone.Id)
+	fmt.Printf("Created zone '%s' with ID %d\n", newZone.Name, newZone.Id)
 
-    //err = addHostname(apiKey, newZone.Id, hostname, client)
-    //if err != nil {
-    //    return err
-    //}
+	//err = addHostname(apiKey, newZone.Id, hostname, client)
+	//if err != nil {
+	//    return err
+	//}
 
-    for _, rule := range source.EdgeRules {
-        rule.Guid = "" 
-        err = addEdgeRule(apiKey, newZone.Id, rule, client)
-        if err != nil {
-            return err
-        }
-    }
+	for _, rule := range source.EdgeRules {
+		rule.Guid = ""
+		err = addEdgeRule(apiKey, newZone.Id, rule, client)
+		if err != nil {
+			return err
+		}
+	}
 
-    fmt.Printf("Done! Zone '%s' cloned successfully\n", newName)
-    return nil
+	fmt.Printf("Done! Zone '%s' cloned successfully\n", newName)
+	return nil
 }
 
 func addHostname(apiKey string, zoneId int, hostname string, client *http.Client) error {
-    body, _ := json.Marshal(map[string]string{"Hostname": hostname})
-    req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/addHostname", zoneId), bytes.NewBuffer(body))
-    if err != nil {
-        return err
-    }
-    req.Header.Set("AccessKey", apiKey)
-    req.Header.Set("Content-Type", "application/json")
+	body, _ := json.Marshal(map[string]string{"Hostname": hostname})
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/addHostname", zoneId), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
 
-    resp, err := client.Do(req)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != 200 {
-        return fmt.Errorf("failed to add hostname, API returned %d", resp.StatusCode)
-    }
-    fmt.Printf("Added hostname '%s'\n", hostname)
-    return nil
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to add hostname, API returned %d", resp.StatusCode)
+	}
+	fmt.Printf("Added hostname '%s'\n", hostname)
+	return nil
 }
 
 func addEdgeRule(apiKey string, zoneId int, rule EdgeRuleFull, client *http.Client) error {
 	body, _ := json.Marshal(rule)
-    req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/edgerules/addOrUpdate", zoneId), bytes.NewBuffer(body))
-    if err != nil {
-        return err
-    }
-    req.Header.Set("AccessKey", apiKey)
-    req.Header.Set("Content-Type", "application/json")
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/edgerules/addOrUpdate", zoneId), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
 
-    resp, err := client.Do(req)
-    if err != nil {
-        return err
-    }
-    defer resp.Body.Close()
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != 200 && resp.StatusCode != 201 {
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-        return fmt.Errorf("failed to add edge rule '%s', API returned %d", rule.Description, resp.StatusCode, string(bodyBytes))
-    }
-    fmt.Printf("Copied edge rule '%s'\n", rule.Description)
-    return nil
+		return fmt.Errorf("failed to add edge rule '%s', API returned %d", rule.Description, resp.StatusCode, string(bodyBytes))
+	}
+	fmt.Printf("Copied edge rule '%s'\n", rule.Description)
+	return nil
 }
 
+func GetRules(apiKey string, zoneId int) ([]EdgeRuleFull, error) {
+	url := fmt.Sprintf("https://api.bunny.net/pullzone/%d", zoneId)
 
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Accept", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 && resp.StatusCode != 201 {
+		return nil, fmt.Errorf("Failed to read edge rules, error: %d", resp.StatusCode)
+	}
+
+	var zone PullZoneFull
+	if err := json.NewDecoder(resp.Body).Decode(&zone); err != nil {
+		return nil, err
+	}
+
+	return zone.EdgeRules, nil
+}
