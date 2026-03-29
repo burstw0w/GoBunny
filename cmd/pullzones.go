@@ -74,6 +74,23 @@ var rulesCmd = &cobra.Command{
 	},
 }
 
+var copyrulesCmd = cobra.Command{
+	Use: "rules copy [source] [target]",
+	Short: "Copies Edge rules from source pullzone to target pullzone",
+	Args: cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string){
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY env variable not set")
+			os.Exit(1)
+		}
+
+		source := args[0]
+		target := args[1]
+		
+	}
+}
+
 var infoAll = &cobra.Command{
 	Use:   "infoAll",
 	Short: "Returns a JSON of all your pullzones and their configurations",
@@ -102,6 +119,7 @@ func init() {
 	pullzonesCmd.AddCommand(cloneCmd)
 	pullzonesCmd.AddCommand(infoAll)
 	pullzonesCmd.AddCommand(rulesCmd)
+	pullzonesCmd.AddCommand(copyrulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
 }
 
