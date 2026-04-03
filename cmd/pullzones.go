@@ -4,6 +4,7 @@ import (
 	"GoBunny/api"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 
@@ -74,6 +75,66 @@ var rulesCmd = &cobra.Command{
 	},
 }
 
+var copyRulesCmd = &cobra.Command{
+	Use:   "copy [source] [target]",
+	Short: "Copies Edge rules from source pullzone to target pullzone",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY env variable not set")
+			os.Exit(1)
+		}
+
+		httpClient := &http.Client{}
+
+		source := args[0]
+		target := args[1]
+
+		zones, err := api.GetPullZonesBasic(apiKey)
+		if err != nil {
+			fmt.Printf("Error fetching zones: %v\n", err)
+			os.Exit(1)
+		}
+
+		var sourceId, targetId int
+		for _, z := range zones {
+			if z.Name == source {
+				sourceId = z.Id
+			}
+			if z.Name == target {
+				targetId = z.Id
+			}
+		}
+
+		if sourceId == 0 || targetId == 0 {
+			fmt.Println("Error: Could not find source or target zone.")
+			os.Exit(1)
+		}
+
+		rules, err := api.GetRules(apiKey, sourceId)
+		if err != nil {
+			fmt.Printf("Error fetching source rules: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Found %d rules in %s. Copying to %s...\n", len(rules), source, target)
+
+		for _, rule := range rules {
+			rule.Guid = ""
+			err := api.AddEdgeRule(apiKey, targetId, rule, httpClient)
+			if err != nil {
+				fmt.Printf("  [!] Failed to copy rule '%s': %v\n", rule.Description, err)
+			} else {
+				fmt.Printf("  [✔] Copied: %s\n", rule.Description)
+			}
+		}
+
+		fmt.Println("Done.")
+
+	},
+}
+
 var infoAll = &cobra.Command{
 	Use:   "infoAll",
 	Short: "Returns a JSON of all your pullzones and their configurations",
@@ -102,7 +163,9 @@ func init() {
 	pullzonesCmd.AddCommand(cloneCmd)
 	pullzonesCmd.AddCommand(infoAll)
 	pullzonesCmd.AddCommand(rulesCmd)
+	rulesCmd.AddCommand(copyRulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
+	rootCmd.AddCommand(rulesCmd)
 }
 
 /*func printZones(zones []api.PullZoneFull) {

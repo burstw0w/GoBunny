@@ -121,7 +121,7 @@ func CloneZone(apiKey string, sourceName string, newName string) error {
 
 	for _, rule := range source.EdgeRules {
 		rule.Guid = ""
-		err = addEdgeRule(apiKey, newZone.Id, rule, client)
+		err = AddEdgeRule(apiKey, newZone.Id, rule, client)
 		if err != nil {
 			return err
 		}
@@ -153,7 +153,7 @@ func addHostname(apiKey string, zoneId int, hostname string, client *http.Client
 	return nil
 }
 
-func addEdgeRule(apiKey string, zoneId int, rule EdgeRuleFull, client *http.Client) error {
+func AddEdgeRule(apiKey string, zoneId int, rule EdgeRuleFull, client *http.Client) error {
 	body, _ := json.Marshal(rule)
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/edgerules/addOrUpdate", zoneId), bytes.NewBuffer(body))
 	if err != nil {
