@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var forceFlag bool
+
 var pullzonesCmd = &cobra.Command{
 	Use:   "pullzones",
 	Short: "Manage BunnyCDN Pull Zones",
@@ -192,11 +194,56 @@ var purgeCmd = &cobra.Command{
 	},
 }
 
+var deleteCmd = &cobra.Command{
+	Use:   "delete [zone]",
+	Short: "Deletes a pullzone",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if !forceFlag {
+			fmt.Printf("This will PERMANENTLY delete '%s'. Type '%s' to confirm: ", args[0], args[0])
+			var confirm string
+			fmt.Scanln(&confirm)
+			if confirm != args[0] {
+				fmt.Println("Aborted.")
+				os.Exit(0)
+			}
+		}
+
+		if err := api.DeleteZone(apiKey, zoneId); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Zone '%s' deleted\n", args[0])
+	},
+}
+
 func init() {
+	deleteCmd.Flags().BoolVarP(&forceFlag, "yes", "y", false, "Skip confirmation")
 	pullzonesCmd.AddCommand(cloneCmd)
 	pullzonesCmd.AddCommand(infoAll)
 	pullzonesCmd.AddCommand(rulesCmd)
 	pullzonesCmd.AddCommand(purgeCmd)
+	pullzonesCmd.AddCommand(deleteCmd)
 	rulesCmd.AddCommand(copyRulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
 	rootCmd.AddCommand(rulesCmd)

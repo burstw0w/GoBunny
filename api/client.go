@@ -227,3 +227,25 @@ func PurgeZone(apiKey string, zoneId int) error {
 	}
 	return nil
 }
+
+func DeleteZone(apiKey string, zoneId int) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://api.bunny.net/pullzone/%d", zoneId), nil)
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("AccessKey", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 204 {
+		return fmt.Errorf("API returned %d", resp.StatusCode)
+	}
+
+	return nil
+}

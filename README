@@ -9,3 +9,4 @@ gobunny pullzones listAll
 gobunny pullzones rules [pullZone]
 gobunny pullzones rules copy [sourcePullZone] [targetPullZone]
 gobunny pullzones purge [pullZone]
+gobunny pullzones delete [pullZone] (-y)
