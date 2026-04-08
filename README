@@ -5,6 +5,7 @@ Currently, you need to install cobra package and run go build of cloned files.
 
 commands that are currently working ([mandatory argument], (optional argument)):
 
+gobunny pullzones create [pullZone name] [origin]
 gobunny pullzones clone [sourcePullZone] [targetPullZone]
 gobunny pullzones listAll
 gobunny pullzones rules [pullZone]
