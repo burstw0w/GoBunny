@@ -228,6 +228,45 @@ func PurgeZone(apiKey string, zoneId int) error {
 	return nil
 }
 
+func CreateZone(apiKey string, name string, originUrl string) (*PullZoneFull, error) {
+	zone := PullZoneFull{
+		Name:      name,
+		OriginUrl: originUrl,
+	}
+
+	body, err := json.Marshal(zone)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("POST", "https://api.bunny.net/pullzone", bytes.NewBuffer(body))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 201 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("failed to create zone, API returned %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	var newZone PullZoneFull
+	err = json.NewDecoder(resp.Body).Decode(&newZone)
+	if err != nil {
+		return nil, err
+	}
+
+	return &newZone, nil
+}
+
 func DeleteZone(apiKey string, zoneId int) error {
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://api.bunny.net/pullzone/%d", zoneId), nil)
 	if err != nil {

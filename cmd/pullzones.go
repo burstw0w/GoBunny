@@ -237,6 +237,46 @@ var deleteCmd = &cobra.Command{
 	},
 }
 
+var createCmd = &cobra.Command{
+	Use:   "create [zone] [origin]",
+	Short: "Creates a pullzone",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		name := args[0]
+		origin := args[1]
+		if !strings.HasPrefix(origin, "http://") && !strings.HasPrefix(origin, "https://") {
+			origin = "https://" + origin
+		}
+
+		zones, err := api.GetPullZonesBasic(apiKey)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		for _, z := range zones {
+			if z.Name == name {
+				fmt.Printf("Zone '%s' already exists\n", name)
+				os.Exit(1)
+			}
+		}
+
+		_, err = api.CreateZone(apiKey, name, origin)
+		if err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Printf("Zone '%s' created\n", name)
+	},
+}
+
 func init() {
 	deleteCmd.Flags().BoolVarP(&forceFlag, "yes", "y", false, "Skip confirmation")
 	pullzonesCmd.AddCommand(cloneCmd)
@@ -244,6 +284,7 @@ func init() {
 	pullzonesCmd.AddCommand(rulesCmd)
 	pullzonesCmd.AddCommand(purgeCmd)
 	pullzonesCmd.AddCommand(deleteCmd)
+	pullzonesCmd.AddCommand(createCmd)
 	rulesCmd.AddCommand(copyRulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
 	rootCmd.AddCommand(rulesCmd)
