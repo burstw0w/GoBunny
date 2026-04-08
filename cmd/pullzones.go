@@ -159,10 +159,44 @@ var infoAll = &cobra.Command{
 	},
 }
 
+var purgeCmd = &cobra.Command{
+	Use:   "purge [zone]",
+	Short: "Purge all cached files for a zone",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if err := api.PurgeZone(apiKey, zoneId); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Cache purged for %s\n", args[0])
+	},
+}
+
 func init() {
 	pullzonesCmd.AddCommand(cloneCmd)
 	pullzonesCmd.AddCommand(infoAll)
 	pullzonesCmd.AddCommand(rulesCmd)
+	pullzonesCmd.AddCommand(purgeCmd)
 	rulesCmd.AddCommand(copyRulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
 	rootCmd.AddCommand(rulesCmd)
