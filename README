@@ -14,4 +14,6 @@ gobunny pullzones purge [pullZone]
 gobunny pullzones delete [pullZone] (-y)
 gobunny pullzones hostname add [pullZone] [hostname]
 gobunny pullzones hostname list [pullZone]
+gobunny pullzones hostname cert [pullZone] [hostname]
+gobunny pullzones hostname forcessl [pullZone] [hostname] [on|off]
 gobunny pullzones hostname remove [pullZone] [hostname]

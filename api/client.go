@@ -154,6 +154,54 @@ func AddHostname(apiKey string, zoneId int, hostname string) error {
 	return nil
 }
 
+func LoadFreeCertificate(apiKey string, hostname string) error {
+	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.bunny.net/pullzone/loadFreeCertificate?hostname=%s", hostname), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return fmt.Errorf("failed to load SSL certificate, API returned %d", resp.StatusCode)
+	}
+	fmt.Printf("SSL certificate provisioned for '%s'\n", hostname)
+	return nil
+}
+
+func SetForceSSL(apiKey string, zoneId int, hostname string, force bool) error {
+	body, _ := json.Marshal(map[string]interface{}{"Hostname": hostname, "ForceSSL": force})
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/setForceSSL", zoneId), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 204 {
+		return fmt.Errorf("failed to set ForceSSL, API returned %d", resp.StatusCode)
+	}
+	state := "disabled"
+	if force {
+		state = "enabled"
+	}
+	fmt.Printf("Force SSL %s for '%s'\n", state, hostname)
+	return nil
+}
+
 func RemoveHostname(apiKey string, zoneId int, hostname string) error {
 	body, _ := json.Marshal(map[string]string{"Hostname": hostname})
 	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://api.bunny.net/pullzone/%d/removeHostname", zoneId), bytes.NewBuffer(body))

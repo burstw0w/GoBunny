@@ -324,21 +324,100 @@ var hostnameListCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		zones, _ := api.GetPullZonesBasic(apiKey)
+		zones, _ := api.GetPullZonesFull(apiKey)
 		for _, z := range zones {
 			if z.Name == args[0] {
 				if len(z.Hostnames) == 0 {
 					fmt.Println("No hostnames found.")
 					os.Exit(0)
 				}
+				fmt.Printf("%-4s %-45s %-5s %-6s %s\n", "ID", "Hostname", "SSL", "Force SSL", "Type")
+				fmt.Println(strings.Repeat("-", 75))
 				for _, h := range z.Hostnames {
-					fmt.Printf("%d: %s\n", h.Id, h.Value)
+					cert := "no"
+					if h.HasCertificate {
+						cert = "yes"
+					}
+					force := "no"
+					if h.ForceSSL {
+						force = "yes"
+					}
+					hType := "custom"
+					if h.IsSystemHostname {
+						hType = "system"
+					} else if h.IsManagedHostname {
+						hType = "managed"
+					}
+					fmt.Printf("%-4d %-45s %-5s %-6s %s\n", h.Id, h.Value, cert, force, hType)
 				}
 				return
 			}
 		}
 		fmt.Println("Zone not found")
 		os.Exit(1)
+	},
+}
+
+var hostnameCertCmd = &cobra.Command{
+	Use:   "cert [zone] [hostname]",
+	Short: "Provision a free Let's Encrypt SSL certificate for a hostname",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var found bool
+		for _, z := range zones {
+			if z.Name == args[0] {
+				found = true
+				break
+			}
+		}
+		if !found {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if err := api.LoadFreeCertificate(apiKey, args[1]); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+var hostnameForceSSLCmd = &cobra.Command{
+	Use:   "forcessl [zone] [hostname] [on|off]",
+	Short: "Enable or disable Force SSL on a hostname",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		force := strings.ToLower(args[2]) == "on"
+		if err := api.SetForceSSL(apiKey, zoneId, args[1], force); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
 	},
 }
 
@@ -384,6 +463,8 @@ func init() {
 	pullzonesCmd.AddCommand(hostnameCmd)
 	hostnameCmd.AddCommand(hostnameAddCmd)
 	hostnameCmd.AddCommand(hostnameListCmd)
+	hostnameCmd.AddCommand(hostnameCertCmd)
+	hostnameCmd.AddCommand(hostnameForceSSLCmd)
 	hostnameCmd.AddCommand(hostnameRemoveCmd)
 	rulesCmd.AddCommand(copyRulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
