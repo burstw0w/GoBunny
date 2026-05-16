@@ -12,6 +12,8 @@ gobunny pullzones rules [pullZone]
 gobunny pullzones rules copy [sourcePullZone] [targetPullZone]
 gobunny pullzones purge [pullZone]
 gobunny pullzones delete [pullZone] (-y)
+gobunny pullzones enable [pullZone]
+gobunny pullzones disable [pullZone]
 gobunny pullzones hostname add [pullZone] [hostname]
 gobunny pullzones hostname list [pullZone]
 gobunny pullzones hostname cert [pullZone] [hostname]

@@ -360,3 +360,31 @@ func DeleteZone(apiKey string, zoneId int) error {
 
 	return nil
 }
+
+func UpdateZone(apiKey string, zoneId int, updates map[string]interface{}) error {
+	body, err := json.Marshal(updates)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d", zoneId), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		bodyBytes, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("failed to update zone, API returned %d: %s", resp.StatusCode, string(bodyBytes))
+	}
+
+	return nil
+}

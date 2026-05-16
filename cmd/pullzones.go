@@ -452,6 +452,70 @@ var hostnameRemoveCmd = &cobra.Command{
 	},
 }
 
+var enableCmd = &cobra.Command{
+	Use:   "enable [zone]",
+	Short: "Enable a pull zone",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if err := api.UpdateZone(apiKey, zoneId, map[string]interface{}{"Enabled": true}); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Zone '%s' enabled\n", args[0])
+	},
+}
+
+var disableCmd = &cobra.Command{
+	Use:   "disable [zone]",
+	Short: "Disable a pull zone",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if err := api.UpdateZone(apiKey, zoneId, map[string]interface{}{"Enabled": false}); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Zone '%s' disabled\n", args[0])
+	},
+}
+
 func init() {
 	deleteCmd.Flags().BoolVarP(&forceFlag, "yes", "y", false, "Skip confirmation")
 	pullzonesCmd.AddCommand(cloneCmd)
@@ -460,6 +524,8 @@ func init() {
 	pullzonesCmd.AddCommand(purgeCmd)
 	pullzonesCmd.AddCommand(deleteCmd)
 	pullzonesCmd.AddCommand(createCmd)
+	pullzonesCmd.AddCommand(enableCmd)
+	pullzonesCmd.AddCommand(disableCmd)
 	pullzonesCmd.AddCommand(hostnameCmd)
 	hostnameCmd.AddCommand(hostnameAddCmd)
 	hostnameCmd.AddCommand(hostnameListCmd)
