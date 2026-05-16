@@ -114,7 +114,7 @@ func CloneZone(apiKey string, sourceName string, newName string) error {
 
 	fmt.Printf("Created zone '%s' with ID %d\n", newZone.Name, newZone.Id)
 
-	//err = addHostname(apiKey, newZone.Id, hostname, client)
+	//err = AddHostname(apiKey, newZone.Id, hostname)
 	//if err != nil {
 	//    return err
 	//}
@@ -131,7 +131,7 @@ func CloneZone(apiKey string, sourceName string, newName string) error {
 	return nil
 }
 
-func addHostname(apiKey string, zoneId int, hostname string, client *http.Client) error {
+func AddHostname(apiKey string, zoneId int, hostname string) error {
 	body, _ := json.Marshal(map[string]string{"Hostname": hostname})
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/addHostname", zoneId), bytes.NewBuffer(body))
 	if err != nil {
@@ -140,16 +140,40 @@ func addHostname(apiKey string, zoneId int, hostname string, client *http.Client
 	req.Header.Set("AccessKey", apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
+	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
+	if resp.StatusCode != 204 {
 		return fmt.Errorf("failed to add hostname, API returned %d", resp.StatusCode)
 	}
 	fmt.Printf("Added hostname '%s'\n", hostname)
+	return nil
+}
+
+func RemoveHostname(apiKey string, zoneId int, hostname string) error {
+	body, _ := json.Marshal(map[string]string{"Hostname": hostname})
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://api.bunny.net/pullzone/%d/removeHostname", zoneId), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 204 {
+		return fmt.Errorf("failed to remove hostname, API returned %d", resp.StatusCode)
+	}
+	fmt.Printf("Removed hostname '%s'\n", hostname)
 	return nil
 }
 

@@ -277,6 +277,102 @@ var createCmd = &cobra.Command{
 	},
 }
 
+var hostnameCmd = &cobra.Command{
+	Use:   "hostname",
+	Short: "Manage hostnames for a pull zone",
+}
+
+var hostnameAddCmd = &cobra.Command{
+	Use:   "add [zone] [hostname]",
+	Short: "Add a hostname to a pull zone",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if err := api.AddHostname(apiKey, zoneId, args[1]); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+var hostnameListCmd = &cobra.Command{
+	Use:   "list [zone]",
+	Short: "List hostnames for a pull zone",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		for _, z := range zones {
+			if z.Name == args[0] {
+				if len(z.Hostnames) == 0 {
+					fmt.Println("No hostnames found.")
+					os.Exit(0)
+				}
+				for _, h := range z.Hostnames {
+					fmt.Printf("%d: %s\n", h.Id, h.Value)
+				}
+				return
+			}
+		}
+		fmt.Println("Zone not found")
+		os.Exit(1)
+	},
+}
+
+var hostnameRemoveCmd = &cobra.Command{
+	Use:   "remove [zone] [hostname]",
+	Short: "Remove a hostname from a pull zone",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if err := api.RemoveHostname(apiKey, zoneId, args[1]); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
 func init() {
 	deleteCmd.Flags().BoolVarP(&forceFlag, "yes", "y", false, "Skip confirmation")
 	pullzonesCmd.AddCommand(cloneCmd)
@@ -285,6 +381,10 @@ func init() {
 	pullzonesCmd.AddCommand(purgeCmd)
 	pullzonesCmd.AddCommand(deleteCmd)
 	pullzonesCmd.AddCommand(createCmd)
+	pullzonesCmd.AddCommand(hostnameCmd)
+	hostnameCmd.AddCommand(hostnameAddCmd)
+	hostnameCmd.AddCommand(hostnameListCmd)
+	hostnameCmd.AddCommand(hostnameRemoveCmd)
 	rulesCmd.AddCommand(copyRulesCmd)
 	rootCmd.AddCommand(pullzonesCmd)
 	rootCmd.AddCommand(rulesCmd)
