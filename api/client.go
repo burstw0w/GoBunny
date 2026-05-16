@@ -121,7 +121,7 @@ func CloneZone(apiKey string, sourceName string, newName string) error {
 
 	for _, rule := range source.EdgeRules {
 		rule.Guid = ""
-		err = AddEdgeRule(apiKey, newZone.Id, rule, client)
+		err = AddEdgeRule(apiKey, newZone.Id, rule)
 		if err != nil {
 			return err
 		}
@@ -225,7 +225,7 @@ func RemoveHostname(apiKey string, zoneId int, hostname string) error {
 	return nil
 }
 
-func AddEdgeRule(apiKey string, zoneId int, rule EdgeRuleFull, client *http.Client) error {
+func AddEdgeRule(apiKey string, zoneId int, rule EdgeRuleFull) error {
 	body, _ := json.Marshal(rule)
 	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/edgerules/addOrUpdate", zoneId), bytes.NewBuffer(body))
 	if err != nil {
@@ -234,6 +234,7 @@ func AddEdgeRule(apiKey string, zoneId int, rule EdgeRuleFull, client *http.Clie
 	req.Header.Set("AccessKey", apiKey)
 	req.Header.Set("Content-Type", "application/json")
 
+	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
 		return err
@@ -242,9 +243,57 @@ func AddEdgeRule(apiKey string, zoneId int, rule EdgeRuleFull, client *http.Clie
 
 	if resp.StatusCode != 200 && resp.StatusCode != 201 {
 		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("failed to add edge rule '%s', API returned %d", rule.Description, resp.StatusCode, string(bodyBytes))
+		return fmt.Errorf("failed to add edge rule '%s', API returned %d: %s", rule.Description, resp.StatusCode, string(bodyBytes))
 	}
-	fmt.Printf("Copied edge rule '%s'\n", rule.Description)
+	fmt.Printf("Added edge rule '%s'\n", rule.Description)
+	return nil
+}
+
+func DeleteEdgeRule(apiKey string, pullZoneId int, edgeRuleId string) error {
+	req, err := http.NewRequest("DELETE", fmt.Sprintf("https://api.bunny.net/pullzone/%d/edgerules/%s", pullZoneId, edgeRuleId), nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 204 {
+		return fmt.Errorf("failed to delete edge rule, API returned %d", resp.StatusCode)
+	}
+	fmt.Println("Edge rule deleted")
+	return nil
+}
+
+func SetEdgeRuleEnabled(apiKey string, pullZoneId int, edgeRuleId string, enabled bool) error {
+	body, _ := json.Marshal(map[string]interface{}{"Id": pullZoneId, "Value": enabled})
+	req, err := http.NewRequest("POST", fmt.Sprintf("https://api.bunny.net/pullzone/%d/edgerules/%s/setEdgeRuleEnabled", pullZoneId, edgeRuleId), bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("AccessKey", apiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 204 {
+		return fmt.Errorf("failed to set edge rule enabled, API returned %d", resp.StatusCode)
+	}
+	state := "disabled"
+	if enabled {
+		state = "enabled"
+	}
+	fmt.Printf("Edge rule %s\n", state)
 	return nil
 }
 

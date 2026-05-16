@@ -4,7 +4,6 @@ import (
 	"GoBunny/api"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"os"
 	"strings"
 
@@ -88,8 +87,6 @@ var copyRulesCmd = &cobra.Command{
 			os.Exit(1)
 		}
 
-		httpClient := &http.Client{}
-
 		source := args[0]
 		target := args[1]
 
@@ -124,7 +121,7 @@ var copyRulesCmd = &cobra.Command{
 
 		for _, rule := range rules {
 			rule.Guid = ""
-			err := api.AddEdgeRule(apiKey, targetId, rule, httpClient)
+			err := api.AddEdgeRule(apiKey, targetId, rule)
 			if err != nil {
 				fmt.Printf("  [!] Failed to copy rule '%s': %v\n", rule.Description, err)
 			} else {
@@ -134,6 +131,172 @@ var copyRulesCmd = &cobra.Command{
 
 		fmt.Println("Done.")
 
+	},
+}
+
+var addRuleCmd = &cobra.Command{
+	Use:   "add [zone] [file.json]",
+	Short: "Add or update an edge rule from a JSON file",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		data, err := os.ReadFile(args[1])
+		if err != nil {
+			fmt.Printf("Error reading file: %v\n", err)
+			os.Exit(1)
+		}
+
+		var rule api.EdgeRuleFull
+		if err := json.Unmarshal(data, &rule); err != nil {
+			fmt.Printf("Error parsing JSON: %v\n", err)
+			os.Exit(1)
+		}
+
+		if err := api.AddEdgeRule(apiKey, zoneId, rule); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+var exportRuleCmd = &cobra.Command{
+	Use:   "export [zone] [rule-name] [file.json]",
+	Short: "Export an edge rule by name to a JSON file (or stdout)",
+	Args:  cobra.RangeArgs(2, 3),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		rules, err := api.GetRules(apiKey, zoneId)
+		if err != nil {
+			fmt.Printf("Error fetching rules: %v\n", err)
+			os.Exit(1)
+		}
+
+		var found *api.EdgeRuleFull
+		for i, r := range rules {
+			if r.Description == args[1] {
+				found = &rules[i]
+				break
+			}
+		}
+		if found == nil {
+			fmt.Printf("No rule named '%s' found\n", args[1])
+			os.Exit(1)
+		}
+
+		data, err := json.MarshalIndent(found, "", "  ")
+		if err != nil {
+			fmt.Printf("Error encoding rule: %v\n", err)
+			os.Exit(1)
+		}
+
+		if len(args) == 3 {
+			if err := os.WriteFile(args[2], data, 0644); err != nil {
+				fmt.Printf("Error writing file: %v\n", err)
+				os.Exit(1)
+			}
+			fmt.Printf("Exported '%s' to %s\n", args[1], args[2])
+		} else {
+			fmt.Println(string(data))
+		}
+	},
+}
+
+var deleteRuleCmd = &cobra.Command{
+	Use:   "delete [zone] [guid]",
+	Short: "Delete an edge rule by GUID",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		if err := api.DeleteEdgeRule(apiKey, zoneId, args[1]); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
+	},
+}
+
+var toggleRuleCmd = &cobra.Command{
+	Use:   "toggle [zone] [guid] [on|off]",
+	Short: "Enable or disable an edge rule",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		apiKey := os.Getenv("BUNNY_API_KEY")
+		if apiKey == "" {
+			fmt.Println("Error: BUNNY_API_KEY not set")
+			os.Exit(1)
+		}
+
+		zones, _ := api.GetPullZonesBasic(apiKey)
+		var zoneId int
+		for _, z := range zones {
+			if z.Name == args[0] {
+				zoneId = z.Id
+				break
+			}
+		}
+		if zoneId == 0 {
+			fmt.Println("Zone not found")
+			os.Exit(1)
+		}
+
+		enabled := strings.ToLower(args[2]) == "on"
+		if err := api.SetEdgeRuleEnabled(apiKey, zoneId, args[1], enabled); err != nil {
+			fmt.Printf("Error: %v\n", err)
+			os.Exit(1)
+		}
 	},
 }
 
@@ -532,7 +695,11 @@ func init() {
 	hostnameCmd.AddCommand(hostnameCertCmd)
 	hostnameCmd.AddCommand(hostnameForceSSLCmd)
 	hostnameCmd.AddCommand(hostnameRemoveCmd)
+	rulesCmd.AddCommand(addRuleCmd)
+	rulesCmd.AddCommand(exportRuleCmd)
 	rulesCmd.AddCommand(copyRulesCmd)
+	rulesCmd.AddCommand(deleteRuleCmd)
+	rulesCmd.AddCommand(toggleRuleCmd)
 	rootCmd.AddCommand(pullzonesCmd)
 	rootCmd.AddCommand(rulesCmd)
 }

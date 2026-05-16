@@ -9,7 +9,10 @@ gobunny pullzones create [pullZone name] [origin]
 gobunny pullzones clone [sourcePullZone] [targetPullZone]
 gobunny pullzones listAll
 gobunny pullzones rules [pullZone]
+gobunny pullzones rules add [pullZone] [rule.json]
 gobunny pullzones rules copy [sourcePullZone] [targetPullZone]
+gobunny pullzones rules delete [pullZone] [guid]
+gobunny pullzones rules toggle [pullZone] [guid] [on|off]
 gobunny pullzones purge [pullZone]
 gobunny pullzones delete [pullZone] (-y)
 gobunny pullzones enable [pullZone]
