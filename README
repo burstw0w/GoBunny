@@ -2,6 +2,12 @@ WIP, feel free to commit changes you feel are needed.
 
 Currently, you need to install cobra package and run go build of cloned files.
 
+Get help for any command by using `--help` or `-h`:
+  gobunny --help
+  gobunny pullzones --help
+  gobunny pullzones <command> --help
+  gobunny pullzones hostname <subcommand> --help
+  gobunny pullzones rules <subcommand> --help
 
 commands that are currently working ([mandatory argument], (optional argument)):
 
