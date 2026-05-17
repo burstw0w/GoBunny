@@ -1,3 +1,5 @@
+UPDATE: Bunny.net team created their own cli tool. While it doesnt have pullzone commands i have, you should check it out as well, here's the link: https://github.com/BunnyWay/cli 
+
 WIP, feel free to commit changes you feel are needed.
 
 Currently, you need to install cobra package and run go build of cloned files.
